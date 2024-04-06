@@ -174,15 +174,22 @@ fig.show()
 df['Year'] = df['Order date'].dt.year
 df['Month'] = df['Order date'].dt.month
 
+#%%
 # Calculating summary stats for each year
 summary_stats = {}
-for year in df['Year'].unique():
+for year in sorted(df['Year'].unique()):
     yearly_data = df[df['Year'] == year]
+    months_with_data = yearly_data['Month'].nunique()  # Get the unique count of months with data
     opening_sales = yearly_data[yearly_data['Month'] == 1]['Sales'].sum()  # January Sales
-    closing_sales = yearly_data[yearly_data['Month'] == 12]['Sales'].sum()  # December Sales, if available
     total_sales = yearly_data['Sales'].sum()  # Total Sales
-    average_sales = yearly_data['Sales'].mean() # Average Monthly Sales
-    
+    average_sales = total_sales / months_with_data if months_with_data else 0  # Avoid division by zero
+
+    # For closing sales, check if data for December is available
+    if 12 in yearly_data['Month'].values:
+        closing_sales = yearly_data[yearly_data['Month'] == 12]['Sales'].sum()  # December Sales
+    else:
+        closing_sales = 'Data not available'  # Handle case for 2018
+
     summary_stats[year] = {
         'Opening Sales': opening_sales,
         'Closing Sales': closing_sales,
@@ -191,11 +198,15 @@ for year in df['Year'].unique():
     }
 # %%
 for year, stats in summary_stats.items():
+    # Determine if we have closing sales data
+    closing_statement = f"and we closed the year with sales of {stats['Closing Sales']:.2f}" if stats['Closing Sales'] != 'Data not available' else "but we only have data up to January"
+    
     print(
-        f"In {year}, we kicked off with opening sales of {stats['Opening Sales']:.2f}. "
-        f"Throughout the year, we experienced fluctuations in the market with a total annual sales of {stats['Total Annual Sales']:.2f}. "
-        f"The average monthly sales amounted to {stats['Average Monthly Sales']:.2f}, "
-        f"with the year wrapping up at closing sales of {stats['Closing Sales']:.2f}. "
-        f"This year was {'' if year != 2018 else 'incomplete, but '} indicative of our market presence and consumer behavior trends."
+        f"In {year}, we started strong with opening sales of {stats['Opening Sales']:.2f}. "
+        f"Throughout the year, the total sales accumulated to {stats['Total Annual Sales']:.2f}, "
+        f"resulting in an average monthly sales figure of {stats['Average Monthly Sales']:.2f}. "
+        f"{closing_statement}. This year's sales performance provided insights into our market dynamics "
+        f"and highlighted areas for strategic improvements."
     )
+
 # %%
