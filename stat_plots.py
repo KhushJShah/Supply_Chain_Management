@@ -98,22 +98,120 @@ numerical_vars=['Days for shipping (real)',
 '''Outlier Detection'''
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-fig = make_subplots(rows=len(numerical_vars), cols=1, subplot_titles=numerical_vars)
+fig = make_subplots(rows=6, cols=2, subplot_titles=numerical_vars)
 
 # Adding a box plot for each numerical variable
+row = 1
+col = 1
 for index, var in enumerate(numerical_vars, start=1):
     fig.add_trace(
         go.Box(y=df[var], name=var, boxpoints='outliers'),  # 'outliers' to show outlier points
-        row=index, col=1
+        row=row, col=col
     )
+    col += 1
+    if col > 2:  # Reset column index and move to next row after every two plots
+        col = 1
+        row += 1
 
 # Update layout to adjust for the number of plots
-fig.update_layout(height=1500, width=800, title_text="Box Plots of Numerical Variables", title_font=dict(family="serif", color="blue", size=20))
-fig.update_yaxes(title_font=dict(family="serif", color="darkred", size=18))
-fig.update_xaxes(title_font=dict(family="serif", color="darkred", size=18))
+fig.update_layout(
+    height=2000,  # Adjusted for a taller layout due to more rows
+    width=800,
+    title_text="Box Plots of Numerical Variables",
+    title_font=dict(family="serif", color="blue", size=20),
+    font=dict(family="serif", color="darkred", size=18),
+    showlegend=False  # Hide legend if not necessary
+)
+
+# Ensure subplot titles have the correct font settings
+for i in fig['layout']['annotations']:
+    i['font'] = dict(family="serif", color="blue", size=18)
 
 # Show the plot
 fig.show()
+#%%
+'''PCA'''
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+# Assuming df is your DataFrame and it includes the numerical variables.
+# First, extract the numerical part of the dataframe:
+data = df[numerical_vars]
+
+# Standardize the data
+scaler = StandardScaler()
+data_scaled = scaler.fit_transform(data)
+
+# Apply PCA
+pca = PCA(n_components=0.95)  # Keep 95% of the variance
+principal_components = pca.fit_transform(data_scaled)
+
+# Create a DataFrame with the principal components
+pc_df = pd.DataFrame(data=principal_components, columns=[f"Principal Component {i+1}" for i in range(principal_components.shape[1])])
+
+# Check the explained variance
+explained_variance = pca.explained_variance_ratio_
+cumulative_variance = np.cumsum(explained_variance)
+
+print("Explained Variance by Component: ", explained_variance)
+print("Cumulative Variance Explained: ", cumulative_variance)
+
+# Optionally, you can check the condition number and singular values
+singular_values = pca.singular_values_
+condition_number = np.max(singular_values) / np.min(singular_values)
+
+print("Singular Values: ", singular_values)
+print("Condition Number: ", condition_number)
+
+#%%
+'''Normality Test'''
+from scipy.stats import shapiro
+normality_test_results = {}
+
+# Apply Shapiro-Wilk test to each numerical variable
+for var in numerical_vars:
+    stat, p_value = shapiro(df[var])
+    normality_test_results[var] = (stat, p_value)
+
+# Print results
+for variable, result in normality_test_results.items():
+    print(f"{variable} - Statistics={result[0]:.4f}, P-value={result[1]:.4g}")
+
+# You may need to handle the case when p-value is very small
+# Example output formatting to handle scientific notation
+    if result[1] < 0.0001:
+        print(f"{variable} - Statistics={result[0]:.4f}, P-value={result[1]:.2e}")
+    else:
+        print(f"{variable} - Statistics={result[0]:.4f}, P-value={result[1]:.4g}")
+
+#%%
+'''Heatmap-Correlation'''
+correlation_matrix = df[numerical_vars].corr()
+
+# 2. Generate Heatmap
+fig = go.Figure(data=go.Heatmap(
+    z=correlation_matrix.values,
+    x=correlation_matrix.columns,
+    y=correlation_matrix.columns,
+    colorscale='Blues',
+    colorbar=dict(title='Pearson Correlation'),
+    text=np.around(correlation_matrix.values, decimals=2),  # Round values to 2 decimal places for display
+    texttemplate="%{text}",
+    hoverinfo="text+x+y"
+))
+
+# Update layout for better visualization
+fig.update_layout(
+    title='Heatmap of Pearson Correlation Coefficients',
+    title_font=dict(family="serif", color="blue", size=20),
+    xaxis=dict(tickangle=-45),
+    yaxis=dict(autorange='reversed'),  # Ensure y-axis starts from top for matrix consistency
+    width=800, height=800  # Adjust size as needed
+)
+fig.show()
+
+
 # %%
 '''
 Line Plots
