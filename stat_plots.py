@@ -93,6 +93,27 @@ numerical_vars=['Days for shipping (real)',
 'Days for shipment (scheduled)',
 'Benefit per order','Sales per customer','Order Item Discount','Order Item Discount Rate','Order Item Product Price','Order Item Profit Ratio','Order Item Quantity','Sales','Order Profit Per Order']
 
+
+#%%
+'''Outlier Detection'''
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+fig = make_subplots(rows=len(numerical_vars), cols=1, subplot_titles=numerical_vars)
+
+# Adding a box plot for each numerical variable
+for index, var in enumerate(numerical_vars, start=1):
+    fig.add_trace(
+        go.Box(y=df[var], name=var, boxpoints='outliers'),  # 'outliers' to show outlier points
+        row=index, col=1
+    )
+
+# Update layout to adjust for the number of plots
+fig.update_layout(height=1500, width=800, title_text="Box Plots of Numerical Variables", title_font=dict(family="serif", color="blue", size=20))
+fig.update_yaxes(title_font=dict(family="serif", color="darkred", size=18))
+fig.update_xaxes(title_font=dict(family="serif", color="darkred", size=18))
+
+# Show the plot
+fig.show()
 # %%
 '''
 Line Plots
@@ -209,4 +230,41 @@ for year, stats in summary_stats.items():
         f"and highlighted areas for strategic improvements."
     )
 
+# %%
+import plotly.express as px
+
+# Example for plotting count of 'Customer Segment'
+fig = px.histogram(df, x='Customer Segment', text_auto=True, title='Count of Orders by Customer Segment')
+fig.update_layout(xaxis_title="Customer Segment", yaxis_title="Count", title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18))
+fig.show()
+# %%
+region_sales = df.groupby('Order Region')['Sales'].sum().reset_index()
+
+fig = px.pie(region_sales, values='Sales', names='Order Region', title='Sales Distribution by Order Region')
+fig.update_traces(textposition='inside', textinfo='percent+label')
+fig.update_layout(title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18))
+fig.show()
+# %%
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Assuming 'Sales per customer' is your variable of interest
+plt.figure(figsize=(10, 6))
+sns.kdeplot(df['Sales per customer'], fill=True, alpha=0.6, linewidth=2)
+plt.title('Distribution of Sales per Customer', fontdict={'fontname': 'serif', 'color':'blue', 'fontsize':20})
+plt.xlabel('Sales per Customer', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
+plt.ylabel('Density', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
+plt.show()
+# %%
+numerical_vars_sample = ['Days for shipping (real)', 'Sales per customer', 'Order Item Quantity']
+
+fig = px.scatter_matrix(df[numerical_vars_sample], title='Pair Plot of Selected Numerical Variables')
+fig.update_layout(title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18),width=1000,height=1000)
+fig.show()
+# %%
+corr_matrix = df[numerical_vars_sample].corr()
+
+fig = go.Figure(data=go.Heatmap(z=corr_matrix, x=corr_matrix.columns, y=corr_matrix.columns, colorbar=dict(title='Correlation')))
+fig.update_layout(title='Correlation Heatmap', title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18),width=800,height=600)
+fig.show()
 # %%
