@@ -187,23 +187,22 @@ for variable, result in normality_test_results.items():
 
 #%%
 '''Heatmap-Correlation'''
-correlation_matrix = df[numerical_vars].corr()
+correlation_matrix = df[numerical_vars].corr(method='spearman')
+print('The correlation matrix: ',correlation_matrix)
 
-# 2. Generate Heatmap
 fig = go.Figure(data=go.Heatmap(
     z=correlation_matrix.values,
     x=correlation_matrix.columns,
     y=correlation_matrix.columns,
     colorscale='Blues',
-    colorbar=dict(title='Pearson Correlation'),
+    colorbar=dict(title='Spearman Correlation'),
     text=np.around(correlation_matrix.values, decimals=2),  # Round values to 2 decimal places for display
     texttemplate="%{text}",
     hoverinfo="text+x+y"
 ))
 
-# Update layout for better visualization
 fig.update_layout(
-    title='Heatmap of Pearson Correlation Coefficients',
+    title='Heatmap of Spearman Correlation Coefficients',
     title_font=dict(family="serif", color="blue", size=20),
     xaxis=dict(tickangle=-45),
     yaxis=dict(autorange='reversed'),  # Ensure y-axis starts from top for matrix consistency
