@@ -105,7 +105,7 @@ row = 1
 col = 1
 for index, var in enumerate(numerical_vars, start=1):
     fig.add_trace(
-        go.Box(y=df[var], name=var, boxpoints='outliers'),  # 'outliers' to show outlier points
+        go.Box(y=df_cleaned[var], name=var, boxpoints='outliers'),  # 'outliers' to show outlier points
         row=row, col=col
     )
     col += 1
@@ -137,7 +137,7 @@ import numpy as np
 
 # Assuming df is your DataFrame and it includes the numerical variables.
 # First, extract the numerical part of the dataframe:
-data = df[numerical_vars]
+data = df_cleaned[numerical_vars]
 
 # Standardize the data
 scaler = StandardScaler()
@@ -171,7 +171,7 @@ normality_test_results = {}
 
 # Apply Shapiro-Wilk test to each numerical variable
 for var in numerical_vars:
-    stat, p_value = shapiro(df[var])
+    stat, p_value = shapiro(df_cleaned[var])
     normality_test_results[var] = (stat, p_value)
 
 # Print results
@@ -187,7 +187,7 @@ for variable, result in normality_test_results.items():
 
 #%%
 '''Heatmap-Correlation'''
-correlation_matrix = df[numerical_vars].corr(method='spearman')
+correlation_matrix = df_cleaned[numerical_vars].corr(method='spearman')
 print('The correlation matrix: ',correlation_matrix)
 
 fig = go.Figure(data=go.Heatmap(
@@ -210,16 +210,40 @@ fig.update_layout(
 )
 fig.show()
 
+#%%
+'''Statistical Analysis'''
+descriptive_stats = df_cleaned.describe()
+
+print(descriptive_stats)
+
+#%%
+sns.set(style="whitegrid")
+# Highly correlated variables: 'Sales per customer' vs 'Sales'
+plt.figure(figsize=(8, 6))
+sns.kdeplot(data=df_cleaned, x="Sales per customer", y="Sales", fill=True, thresh=0, levels=100, cmap="viridis")
+plt.title('KDE of Sales per Customer vs. Sales', fontsize=20, color='blue')
+plt.xlabel('Sales per Customer', fontsize=14, color='darkred')
+plt.ylabel('Sales', fontsize=14, color='darkred')
+plt.show()
+
+#%%
+# Lowly correlated variables: 'Days for shipping (real)' vs 'Sales'
+plt.figure(figsize=(8, 6))
+sns.kdeplot(data=df_cleaned, x="Days for shipping (real)", y="Sales", fill=True, thresh=0, levels=100, cmap="viridis")
+plt.title('KDE of Days for Shipping (Real) vs. Sales', fontsize=20, color='blue')
+plt.xlabel('Days for Shipping (Real)', fontsize=14, color='darkred')
+plt.ylabel('Sales', fontsize=14, color='darkred')
+plt.show()
 
 # %%
 '''
 Line Plots
 '''
 # %%
-df['Order date'] = pd.to_datetime(df['order date (DateOrders)'])
+df_cleaned['Order date'] = pd.to_datetime(df_cleaned['order date (DateOrders)'])
 
 # Now, you might need to aggregate sales data by order date if there are multiple sales per date
-daily_sales = df.groupby(df['Order date'].dt.date)['Sales'].sum().reset_index()
+daily_sales = df_cleaned.groupby(df_cleaned['Order date'].dt.date)['Sales'].sum().reset_index()
 
 # Convert 'Order date' back to datetime to ensure it's in the right format for plotting
 daily_sales['Order date'] = pd.to_datetime(daily_sales['Order date'])
