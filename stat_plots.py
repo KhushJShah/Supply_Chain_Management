@@ -217,23 +217,30 @@ descriptive_stats = df_cleaned.describe()
 print(descriptive_stats)
 
 #%%
-sns.set(style="whitegrid")
-# Highly correlated variables: 'Sales per customer' vs 'Sales'
-plt.figure(figsize=(8, 6))
-sns.kdeplot(data=df_cleaned, x="Sales per customer", y="Sales", fill=True, thresh=0, levels=100, cmap="viridis")
-plt.title('KDE of Sales per Customer vs. Sales', fontsize=20, color='blue')
-plt.xlabel('Sales per Customer', fontsize=14, color='darkred')
-plt.ylabel('Sales', fontsize=14, color='darkred')
-plt.show()
+from scipy.stats import gaussian_kde
+import numpy as np
+
+# Assuming variables 'Sales per customer' and 'Sales' are of interest
+data = np.vstack([df_cleaned['Sales per customer'], df_cleaned['Sales']])
+kde = gaussian_kde(data)
+
+# Compute the density at a grid of points
+x_grid = np.linspace(data[0].min(), data[0].max(), 100)
+y_grid = np.linspace(data[1].min(), data[1].max(), 100)
+X, Y = np.meshgrid(x_grid, y_grid)
+Z = kde(np.vstack([X.ravel(), Y.ravel()])).reshape(X.shape)
 
 #%%
-# Lowly correlated variables: 'Days for shipping (real)' vs 'Sales'
-plt.figure(figsize=(8, 6))
-sns.kdeplot(data=df_cleaned, x="Days for shipping (real)", y="Sales", fill=True, thresh=0, levels=100, cmap="viridis")
-plt.title('KDE of Days for Shipping (Real) vs. Sales', fontsize=20, color='blue')
-plt.xlabel('Days for Shipping (Real)', fontsize=14, color='darkred')
-plt.ylabel('Sales', fontsize=14, color='darkred')
-plt.show()
+# Maximum density value
+max_density = np.max(Z)
+peak_coords = np.unravel_index(np.argmax(Z), Z.shape)
+
+# Coordinates of the peak density
+peak_x = X[peak_coords]
+peak_y = Y[peak_coords]
+
+print(f"Maximum density value: {max_density}")
+print(f"Density peak at coordinates: ({peak_x:.2f}, {peak_y:.2f})")
 
 # %%
 '''
@@ -313,14 +320,14 @@ fig.update_layout(
 fig.update_xaxes(tickangle=45)
 fig.show()
 # %%
-df['Year'] = df['Order date'].dt.year
-df['Month'] = df['Order date'].dt.month
+df_cleaned['Year'] = df_cleaned['Order date'].dt.year
+df_cleaned['Month'] = df_cleaned['Order date'].dt.month
 
 #%%
 # Calculating summary stats for each year
 summary_stats = {}
-for year in sorted(df['Year'].unique()):
-    yearly_data = df[df['Year'] == year]
+for year in sorted(df_cleaned['Year'].unique()):
+    yearly_data = df_cleaned[df_cleaned['Year'] == year]
     months_with_data = yearly_data['Month'].nunique()  # Get the unique count of months with data
     opening_sales = yearly_data[yearly_data['Month'] == 1]['Sales'].sum()  # January Sales
     total_sales = yearly_data['Sales'].sum()  # Total Sales
@@ -355,7 +362,7 @@ for year, stats in summary_stats.items():
 import plotly.express as px
 
 # Example for plotting count of 'Customer Segment'
-fig = px.histogram(df, x='Customer Segment', text_auto=True, title='Count of Orders by Customer Segment')
+fig = px.histogram(df_cleaned, x='Customer Segment', text_auto=True, title='Count of Orders by Customer Segment')
 fig.update_layout(xaxis_title="Customer Segment", yaxis_title="Count", title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18))
 fig.show()
 # %%
@@ -371,7 +378,7 @@ import matplotlib.pyplot as plt
 
 # Assuming 'Sales per customer' is your variable of interest
 plt.figure(figsize=(10, 6))
-sns.kdeplot(df['Sales per customer'], fill=True, alpha=0.6, linewidth=2)
+sns.kdeplot(df_cleaned['Sales per customer'], fill=True, alpha=0.6, linewidth=2)
 plt.title('Distribution of Sales per Customer', fontdict={'fontname': 'serif', 'color':'blue', 'fontsize':20})
 plt.xlabel('Sales per Customer', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
 plt.ylabel('Density', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
@@ -379,13 +386,78 @@ plt.show()
 # %%
 numerical_vars_sample = ['Days for shipping (real)', 'Sales per customer', 'Order Item Quantity']
 
-fig = px.scatter_matrix(df[numerical_vars_sample], title='Pair Plot of Selected Numerical Variables')
+fig = px.scatter_matrix(df_cleaned[numerical_vars_sample], title='Pair Plot of Selected Numerical Variables')
 fig.update_layout(title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18),width=1000,height=1000)
 fig.show()
 # %%
-corr_matrix = df[numerical_vars_sample].corr()
+'''Product and Category Performance'''
+# Aggregating the sales data by 'Category Name' and 'Year'
+category_yearly_sales = df_cleaned.groupby(['Category Name', 'Year'])['Sales'].sum().reset_index()
 
-fig = go.Figure(data=go.Heatmap(z=corr_matrix, x=corr_matrix.columns, y=corr_matrix.columns, colorbar=dict(title='Correlation')))
-fig.update_layout(title='Correlation Heatmap', title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18),width=800,height=600)
-fig.show()
+# Creating a pivot table for the heatmap
+category_sales_pivot = category_yearly_sales.pivot('Category Name', 'Year', 'Sales')
+
+# Plotting the heatmap
+plt.figure(figsize=(14, 10))
+sns.heatmap(category_sales_pivot, annot=True, fmt=".1f", linewidths=.5, cmap="viridis", cbar=True)
+
+# Adding titles and labels
+plt.title('Yearly Sales by Product Category', fontsize=20, color='blue')
+plt.ylabel('Category Name', fontsize=14, color='darkred')
+plt.xlabel('Year', fontsize=14, color='darkred')
+
+# Display the heatmap
+plt.show()
+
+#%%
+from prettytable import PrettyTable
+
+# Recalculate total sales yearly and overall total sales as per previous setup
+total_sales_yearly = df_cleaned.groupby(['Category Name', 'Year'])['Sales'].sum()
+average_sales_yearly = monthly_sales.groupby(['Category Name', 'Year'])['Sales'].mean()
+total_sales_overall = df_cleaned.groupby('Category Name')['Sales'].sum()
+
+# Creating the PrettyTable
+table = PrettyTable()
+table.field_names = ["Category Name", "Year", "Total Sales", "Average Monthly Sales", "Overall Total Sales"]
+
+# Populate the table
+for category in total_sales_yearly.index.get_level_values(0).unique():
+    for year in total_sales_yearly.loc[category].index:
+        total_sales = total_sales_yearly.loc[(category, year)]
+        avg_monthly_sales = average_sales_yearly.loc[(category, year)]
+        overall_total = total_sales_overall.loc[category]
+        table.add_row([category, year, f"{total_sales:.2f}", f"{avg_monthly_sales:.2f}", f"{overall_total:.2f}"])
+
+# Print the pretty table
+print(table)
+# %%
+'''Customer Segmentation'''
+segment_yearly_sales = df_cleaned.groupby(['Year', 'Customer Segment'])['Sales'].sum().unstack(fill_value=0)
+
+# Plotting
+plt.figure(figsize=(12, 8))
+segment_yearly_sales.plot(kind='bar', stacked=True, colormap='viridis')
+plt.title('Yearly Sales by Customer Segment', fontsize=20, color='blue')
+plt.xlabel('Year', fontsize=14, color='darkred')
+plt.ylabel('Total Sales', fontsize=14, color='darkred')
+plt.legend(title='Customer Segment')
+plt.show()
+# %%
+if {'Year', 'Customer Segment', 'Sales'}.issubset(df_cleaned.columns):
+    # Group data by 'Year' and 'Customer Segment' and sum 'Sales'
+    segment_yearly_sales = df_cleaned.groupby(['Year', 'Customer Segment'])['Sales'].sum().reset_index()
+
+    # Creating the PrettyTable
+    table = PrettyTable()
+    table.field_names = ["Year", "Customer Segment", "Total Sales"]
+
+    # Populate the table
+    for index, row in segment_yearly_sales.iterrows():
+        table.add_row([row['Year'], row['Customer Segment'], f"{row['Sales']:.2f}"])
+
+    # Print the pretty table
+    print(table)
+else:
+    print("One or more required columns are missing from the DataFrame. Please ensure 'Year', 'Customer Segment', and 'Sales' are correct.")
 # %%
