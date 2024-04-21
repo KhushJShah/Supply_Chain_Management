@@ -359,37 +359,6 @@ for year, stats in summary_stats.items():
     )
 
 # %%
-import plotly.express as px
-
-# Example for plotting count of 'Customer Segment'
-fig = px.histogram(df_cleaned, x='Customer Segment', text_auto=True, title='Count of Orders by Customer Segment')
-fig.update_layout(xaxis_title="Customer Segment", yaxis_title="Count", title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18))
-fig.show()
-# %%
-region_sales = df.groupby('Order Region')['Sales'].sum().reset_index()
-
-fig = px.pie(region_sales, values='Sales', names='Order Region', title='Sales Distribution by Order Region')
-fig.update_traces(textposition='inside', textinfo='percent+label')
-fig.update_layout(title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18))
-fig.show()
-# %%
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-# Assuming 'Sales per customer' is your variable of interest
-plt.figure(figsize=(10, 6))
-sns.kdeplot(df_cleaned['Sales per customer'], fill=True, alpha=0.6, linewidth=2)
-plt.title('Distribution of Sales per Customer', fontdict={'fontname': 'serif', 'color':'blue', 'fontsize':20})
-plt.xlabel('Sales per Customer', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
-plt.ylabel('Density', fontdict={'fontname': 'serif', 'color':'darkred', 'fontsize':14})
-plt.show()
-# %%
-numerical_vars_sample = ['Days for shipping (real)', 'Sales per customer', 'Order Item Quantity']
-
-fig = px.scatter_matrix(df_cleaned[numerical_vars_sample], title='Pair Plot of Selected Numerical Variables')
-fig.update_layout(title_font=dict(family="serif", color="blue", size=20), font=dict(family="serif", color="darkred", size=18),width=1000,height=1000)
-fig.show()
-# %%
 '''Product and Category Performance'''
 # Aggregating the sales data by 'Category Name' and 'Year'
 category_yearly_sales = df_cleaned.groupby(['Category Name', 'Year'])['Sales'].sum().reset_index()
@@ -413,6 +382,7 @@ plt.show()
 from prettytable import PrettyTable
 
 # Recalculate total sales yearly and overall total sales as per previous setup
+monthly_sales = df_cleaned.groupby(['Category Name', 'Year', 'Month'])['Sales'].sum().reset_index()
 total_sales_yearly = df_cleaned.groupby(['Category Name', 'Year'])['Sales'].sum()
 average_sales_yearly = monthly_sales.groupby(['Category Name', 'Year'])['Sales'].mean()
 total_sales_overall = df_cleaned.groupby('Category Name')['Sales'].sum()
@@ -444,20 +414,109 @@ plt.ylabel('Total Sales', fontsize=14, color='darkred')
 plt.legend(title='Customer Segment')
 plt.show()
 # %%
-if {'Year', 'Customer Segment', 'Sales'}.issubset(df_cleaned.columns):
-    # Group data by 'Year' and 'Customer Segment' and sum 'Sales'
-    segment_yearly_sales = df_cleaned.groupby(['Year', 'Customer Segment'])['Sales'].sum().reset_index()
 
-    # Creating the PrettyTable
-    table = PrettyTable()
-    table.field_names = ["Year", "Customer Segment", "Total Sales"]
+segment_yearly_sales = df_cleaned.groupby(['Year', 'Customer Segment'])['Sales'].sum().reset_index()
 
-    # Populate the table
-    for index, row in segment_yearly_sales.iterrows():
-        table.add_row([row['Year'], row['Customer Segment'], f"{row['Sales']:.2f}"])
+table = PrettyTable()
+table.field_names = ["Year", "Customer Segment", "Total Sales"]
 
-    # Print the pretty table
-    print(table)
-else:
-    print("One or more required columns are missing from the DataFrame. Please ensure 'Year', 'Customer Segment', and 'Sales' are correct.")
+for index, row in segment_yearly_sales.iterrows():
+    table.add_row([row['Year'], row['Customer Segment'], f"{row['Sales']:.2f}"])
+
+print(table)
+
+# %%
+customer_segment_counts = df_cleaned['Customer Segment'].value_counts(normalize=True)
+
+# Calculate the total sales per customer segment and normalize to get percentages
+segment_sales = df_cleaned.groupby('Customer Segment')['Sales'].sum()
+total_sales = segment_sales.sum()
+segment_sales_percentage = segment_sales / total_sales
+
+# Create subplots for two pie charts
+fig, ax = plt.subplots(1, 2, figsize=(10, 8))
+
+# Pie chart for percentage of customers in each segment
+wedges, texts, autotexts = ax[0].pie(customer_segment_counts, labels=customer_segment_counts.index, autopct='%1.1f%%', 
+                                     startangle=90, pctdistance=0.85)
+ax[0].set_title('Percentage of Customers by Segment', fontsize=18, color='blue')
+plt.setp(autotexts, size=10, weight="bold")  # Increase the font size for percentages
+
+# Pie chart for percentage of sales in each segment
+wedges, texts, autotexts = ax[1].pie(segment_sales_percentage, labels=segment_sales_percentage.index, autopct='%1.1f%%', 
+                                     startangle=90, pctdistance=0.85)
+ax[1].set_title('Percentage of Sales by Segment', fontsize=18, color='blue')
+plt.setp(autotexts, size=10, weight="bold")  # Increase the font size for percentages
+
+# Adjust legend
+ax[1].legend(title="Customer Segment", loc="upper right", bbox_to_anchor=(1.1, 1.025))
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+# %%
+country_sales = df_cleaned.groupby('Order Country')['Sales'].sum().sort_values()
+
+# Select top 3 and bottom 3 countries based on total sales
+top_countries = country_sales.tail(3)
+bottom_countries = country_sales.head(3)
+
+# Combine the data for top and bottom countries
+selected_countries = pd.concat([bottom_countries, top_countries])
+
+# Filter the original dataframe to include only these countries
+filtered_data = df_cleaned[df_cleaned['Order Country'].isin(selected_countries.index)]
+
+# Plotting the Boxen plot for Sales across selected top and bottom Order Countries
+plt.figure(figsize=(12, 8))
+sns.boxenplot(x='Sales', y='Order Country', data=filtered_data, orient='h')
+plt.title('Sales Distribution for Top and Bottom Order Countries', fontsize=20, color='blue')
+plt.xlabel('Sales', fontsize=14, color='darkred')
+plt.ylabel('Order Country', fontsize=14, color='darkred')
+plt.show()
+
+#%%
+'''Region Based Analysis'''
+# %%
+'''Pair plot'''
+top_countries = df_cleaned.groupby('Order Country')['Sales'].sum().nlargest(3).index
+bottom_countries = df_cleaned.groupby('Order Country')['Sales'].sum().nsmallest(3).index
+
+# Filter the DataFrame for these countries
+top_bottom_countries = df_cleaned[df_cleaned['Order Country'].isin(top_countries.union(bottom_countries))]
+
+# Pair Plot for the selected countries and additional 'Benefit per order'
+sns.pairplot(top_bottom_countries, 
+             vars=['Days for shipping (real)', 'Benefit per order'], 
+             hue='Order Country', 
+             diag_kind='kde',
+             palette='husl',
+             plot_kws={'alpha': 0.6, 's': 80, 'edgecolor': 'k'})
+
+# Display the plot
+plt.show()
+# %%
+'''Hist plot'''
+sns.histplot(data=df_cleaned, x='Days for shipping (real)', hue='Order Region', kde=True, fill=True, alpha=0.6)
+
+# %%
+import scipy.stats as stats
+
+for region in df_cleaned['Order Region'].unique():
+    stats.probplot(df_cleaned[df_cleaned['Order Region'] == region]['Benefit per order'], dist="norm", plot=plt)
+    plt.title(f'QQ Plot for {region}')
+    plt.show()
+# %%
+df_cleaned['Order Date'] = pd.to_datetime(df_cleaned['order date (DateOrders)'])
+df_cleaned.sort_values('Order Date', inplace=True)
+df_cleaned['Cumulative Sales'] = df_cleaned.groupby('Order Region')['Sales'].cumsum()
+df_cleaned.pivot(index='Order Date', columns='Order Region', values='Cumulative Sales').plot.area()
+
+# %%
+sns.kdeplot(data=df_cleaned, x='Product Price', hue='Order Region', fill=True, alpha=0.6)
+sns.rugplot(data=df_cleaned, x='Product Price', hue='Order Region', height=-0.02, clip_on=False)
+
+# %%
+sns.kdeplot(data=df_cleaned, x='Sales', y='Days for shipping (real)', hue='Order Region', levels=5)
+
 # %%
