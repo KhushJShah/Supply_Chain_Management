@@ -45,6 +45,9 @@ print('The first 5 rows of the dataset: \n',df.head())
 '''
 Phase 1: Static visualizations
 '''
+import matplotlib as mpl
+mpl.rcParams['font.family'] = 'serif'
+sns.set(rc={'font.family':'serif'})
 
 #%%
 '''Data Pre-processing and description'''
@@ -373,7 +376,7 @@ sns.heatmap(category_sales_pivot, annot=True, fmt=".1f", linewidths=.5, cmap="vi
 # Adding titles and labels
 plt.title('Yearly Sales by Product Category', fontsize=20, color='blue')
 plt.ylabel('Category Name', fontsize=14, color='darkred')
-plt.xlabel('Year', fontsize=14, color='darkred')
+plt.xlabel('Year', font='serif',fontsize=14, color='darkred')
 
 # Display the heatmap
 plt.show()
@@ -408,7 +411,7 @@ segment_yearly_sales = df_cleaned.groupby(['Year', 'Customer Segment'])['Sales']
 # Plotting
 plt.figure(figsize=(12, 8))
 segment_yearly_sales.plot(kind='bar', stacked=True, colormap='viridis')
-plt.title('Yearly Sales by Customer Segment', fontsize=20, color='blue')
+plt.title('Yearly Sales by Customer Segment', fontsize=18, color='blue')
 plt.xlabel('Year', fontsize=14, color='darkred')
 plt.ylabel('Total Sales', fontsize=14, color='darkred')
 plt.legend(title='Customer Segment')
@@ -455,6 +458,7 @@ ax[1].legend(title="Customer Segment", loc="upper right", bbox_to_anchor=(1.1, 1
 plt.tight_layout()
 plt.show()
 # %%
+'''Regional sales'''
 country_sales = df_cleaned.groupby('Order Country')['Sales'].sum().sort_values()
 
 # Select top 3 and bottom 3 countries based on total sales
@@ -479,44 +483,395 @@ plt.show()
 '''Region Based Analysis'''
 # %%
 '''Pair plot'''
+axes_color = 'darkred'
+title_color = 'blue'
+legend_title = 'Order Region'
+palette = sns.color_palette("husl", len(df_cleaned['Order Region'].unique()))
+# Selecting the top and bottom 3 countries based on total sales
 top_countries = df_cleaned.groupby('Order Country')['Sales'].sum().nlargest(3).index
 bottom_countries = df_cleaned.groupby('Order Country')['Sales'].sum().nsmallest(3).index
 
-# Filter the DataFrame for these countries
+# Filtering the DataFrame for these countries
 top_bottom_countries = df_cleaned[df_cleaned['Order Country'].isin(top_countries.union(bottom_countries))]
 
-# Pair Plot for the selected countries and additional 'Benefit per order'
-sns.pairplot(top_bottom_countries, 
-             vars=['Days for shipping (real)', 'Benefit per order'], 
-             hue='Order Country', 
-             diag_kind='kde',
-             palette='husl',
-             plot_kws={'alpha': 0.6, 's': 80, 'edgecolor': 'k'})
+# Creating the pair plot without 'Type'
+sns.set(style="ticks")
+pair_plot = sns.pairplot(top_bottom_countries, 
+                         vars=['Days for shipping (real)', 'Benefit per order'], 
+                         hue='Order Country', 
+                         diag_kind='kde',
+                         palette='husl')
+
+# Set title and axis labels with specified colors
+pair_plot.fig.suptitle('Pair Plot for Shipping Days and Benefit per Order by Country', color=title_color, y=1.02)
+for ax in pair_plot.axes.flatten():
+    ax.set_xlabel(ax.get_xlabel(), color=axes_color)
+    ax.set_ylabel(ax.get_ylabel(), color=axes_color)
+
+# Adjusting legend
+handles = pair_plot._legend_data.values()
+labels = pair_plot._legend_data.keys()
+pair_plot.fig.legend(handles=handles, labels=labels, title='Order Country', loc='center right', bbox_to_anchor=(1.25, 0.5))
+pair_plot._legend.remove()
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
+
+# %%
+'''Violin plot'''
+palette = sns.color_palette('husl', len(df_cleaned['Order Region'].unique()))
+plt.figure(figsize=(12, 8))
+sns.violinplot(data=df_cleaned, x='Order Region', y='Days for shipping (real)', palette=palette, cut=0)
+plt.title('Shipping Days by Order Region',font='serif', fontsize=16, color=title_color)
+plt.xlabel('Order Region',font='serif', fontsize=14, color=axes_color)
+plt.ylabel('Days for Shipping (Real)',font='serif', fontsize=14, color=axes_color)
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# %%
+
+
+#%%
+'''Scatter plot'''
+plt.figure(figsize=(14, 7))
+
+# Scatter plot for 'Days for shipping (real)' vs 'Sales'
+plt.subplot(1, 2, 1)
+sns.scatterplot(
+    data=df_cleaned,
+    x='Days for shipping (real)',
+    y='Sales',
+    hue='Order Region',
+    palette=palette,
+    alpha=0.6
+)
+plt.title('Shipping Days vs Sales',font='serif', fontsize=16, color=title_color)
+plt.xlabel('Days for Shipping (Real)', font='serif',fontsize=14, color=axes_color)
+plt.ylabel('Sales', font='serif',fontsize=14, color=axes_color)
+
+# Scatter plot for 'Days for shipping (real)' vs 'Benefit per order'
+plt.subplot(1, 2, 2)
+sns.scatterplot(
+    data=df_cleaned,
+    x='Days for shipping (real)',
+    y='Benefit per order',
+    hue='Order Region',
+    palette=palette,
+    alpha=0.6
+)
+plt.title('Shipping Days vs Benefit per Order',font='serif', fontsize=16, color=title_color)
+plt.xlabel('Days for Shipping (Real)',font='serif', fontsize=14, color=axes_color)
+plt.ylabel('Benefit per Order',font='serif', fontsize=14, color=axes_color)
+
+# Remove the legend from the first subplot
+plt.subplot(1, 2, 1).legend().remove()
+
+# Adjust the legend on the second subplot
+plt.subplot(1, 2, 2).legend(title='Order Region', loc='center left', bbox_to_anchor=(1.25, 0.5), frameon=False)
+
+plt.tight_layout()
+plt.show()
+
+
+# %%
+'''Delivery status'''
+#%%
+'''Cluster Map'''
+market_country_crosstab = pd.crosstab(df_cleaned['Market'], df_cleaned['Order Region'])
+
+# Set the font and colors before creating the plot
+sns.set(font_scale=1.2)
+sns.set_style("whitegrid", {'axes.grid' : False})
+plt.figure(figsize=(14, 10))
+
+# Create the cluster map with the specified color map
+cluster_map = sns.clustermap(market_country_crosstab, cmap="viridis", figsize=(12, 8))
+
+# Enhance the appearance of the plot
+plt.setp(cluster_map.ax_heatmap.xaxis.get_majorticklabels(), rotation=90, fontsize=10, color='darkred')
+plt.setp(cluster_map.ax_heatmap.yaxis.get_majorticklabels(), rotation=0, fontsize=10, color='darkred')
+plt.setp(cluster_map.ax_heatmap.title, color='darkblue', fontsize=12)
+
+# Show the cluster map with title
+plt.suptitle('Cluster Map of Market and Order Region', color='darkblue', size=16, va='top')
+plt.show()
+
+
+# %%
+
+#%%
+'''Distplot'''
+sns.set(style="whitegrid")
+plt.figure(figsize=(10, 6))
+
+# Distplot for 'Sales per customer'
+sns.distplot(df_cleaned['Sales per customer'], color="skyblue", label='Sales per Customer', hist=False, kde=True, kde_kws={'alpha':0.7})
+
+# Distplot for 'Benefit per order'
+sns.distplot(df_cleaned['Benefit per order'], color="red", label='Benefit per Order', hist=False, kde=True, kde_kws={'alpha':0.7})
+
+# Adding title and labels
+plt.title('Distribution of Sales per Customer and Benefit per Order', fontdict={'family': 'serif', 'color': 'darkblue', 'size': 18})
+plt.xlabel('Value', fontdict={'family': 'serif', 'color': 'darkred', 'size': 15})
+plt.ylabel('Density', fontdict={'family': 'serif', 'color': 'darkred', 'size': 15})
+
+# Adding legend
+plt.legend(title='Legend')
 
 # Display the plot
 plt.show()
-# %%
-'''Hist plot'''
-sns.histplot(data=df_cleaned, x='Days for shipping (real)', hue='Order Region', kde=True, fill=True, alpha=0.6)
+#%%
+'''QQ-Plot'''
+sns.set_style("whitegrid")
 
-# %%
-import scipy.stats as stats
+# Assuming 'df_cleaned' is your dataframe with the correct columns
+# Determine the number of unique markets
+unique_markets = df_cleaned['Market'].unique()
+n_markets = len(unique_markets)
 
-for region in df_cleaned['Order Region'].unique():
-    stats.probplot(df_cleaned[df_cleaned['Order Region'] == region]['Benefit per order'], dist="norm", plot=plt)
-    plt.title(f'QQ Plot for {region}')
-    plt.show()
-# %%
-df_cleaned['Order Date'] = pd.to_datetime(df_cleaned['order date (DateOrders)'])
-df_cleaned.sort_values('Order Date', inplace=True)
-df_cleaned['Cumulative Sales'] = df_cleaned.groupby('Order Region')['Sales'].cumsum()
-df_cleaned.pivot(index='Order Date', columns='Order Region', values='Cumulative Sales').plot.area()
+# Calculate the number of rows and columns for the subplots
+n_cols = int(np.ceil(np.sqrt(n_markets)))
+n_rows = int(np.ceil(n_markets / n_cols))
 
-# %%
-sns.kdeplot(data=df_cleaned, x='Product Price', hue='Order Region', fill=True, alpha=0.6)
-sns.rugplot(data=df_cleaned, x='Product Price', hue='Order Region', height=-0.02, clip_on=False)
+# Create figure and axes for the subplots
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 15))
+fig.suptitle('QQ Plots of Late Delivery Risk by Market', 
+             color='blue', fontsize=16, fontfamily='serif')
 
-# %%
-sns.kdeplot(data=df_cleaned, x='Sales', y='Days for shipping (real)', hue='Order Region', levels=5)
+# Flatten the axes array for easy iteration if it's 2D
+axes = axes.flatten()
 
+# Plot each market's QQ plot in a subplot
+for i, market in enumerate(unique_markets):
+    market_data = df_cleaned[df_cleaned['Market'] == market]['Late_delivery_risk']
+    ax = axes[i]
+    stats.probplot(market_data, dist="norm", plot=ax)
+    ax.set_title(market, color='darkblue', fontsize=12, fontfamily='serif')
+    ax.set_xlabel('Theoretical Quantiles', color='darkred', fontsize=10, fontfamily='serif')
+    ax.set_ylabel('Ordered Values', color='darkred', fontsize=10, fontfamily='serif')
+
+    # Set the colors of the major and minor ticks on both axes
+    ax.tick_params(colors='darkred', which='both')
+
+# Remove any empty subplots
+for i in range(len(unique_markets), len(axes)):
+    fig.delaxes(axes[i])
+
+plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust for the title space
+plt.show()
+#%%
+'''KDE Plot'''
+plt.figure(figsize=(10, 6))
+sns.kdeplot(
+    data=df_cleaned,
+    x="Days for shipping (real)",
+    y="Days for shipment (scheduled)",
+    fill=True,
+    thresh=0,
+    levels=100,
+    cmap="mako",
+    alpha=0.6
+)
+plt.title('Distribution of Shipping Days', fontdict={'fontname': 'serif', 'color':'blue', 'size': 'large'})
+plt.xlabel('Days for shipping (real)', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 'large'})
+plt.ylabel('Days for shipment (scheduled)', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 'large'})
+plt.show()
+#%%
+'''Reg plot'''
+plt.figure(figsize=(10, 6))
+sns.regplot(
+    data=df_cleaned,
+    x="Sales per customer",
+    y="Days for shipping (real)",
+    scatter_kws={'alpha':0.6}
+)
+plt.title('Sales vs. Shipping Days', fontdict={'fontname': 'serif', 'color':'blue', 'size': 'large'})
+plt.xlabel('Sales per customer', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 'large'})
+plt.ylabel('Days for shipping (real)', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 'large'})
+plt.show()
+#%%
+df_pivot = df_cleaned.pivot_table(
+    index='order date (DateOrders)',
+    columns='Shipping Mode',
+    values='Order Profit Per Order',
+    aggfunc='sum'
+)
+
+# Fill NaN values with 0 for accurate cumulative sums
+df_pivot.fillna(0, inplace=True)
+
+# Separate positive and negative values
+df_positive = df_pivot[df_pivot > 0].fillna(0).cumsum()
+df_negative = df_pivot[df_pivot < 0].fillna(0).cumsum()
+
+# Create subplots
+fig, ax = plt.subplots(2, 1, figsize=(10, 12), sharex=True)
+
+# Plot positive values
+df_positive.plot(kind='area', alpha=0.6, ax=ax[0])
+ax[0].set_title('Cumulative Positive Profits Over Time by Shipping Mode', fontdict={'fontname': 'serif', 'color':'blue', 'size': 16})
+ax[0].set_ylabel('Cumulative Positive Profit', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+ax[0].yaxis.set_major_formatter(plt.matplotlib.ticker.FormatStrFormatter('%.2f'))
+
+# Plot negative values
+df_negative.plot(kind='area', alpha=0.6, ax=ax[1])
+ax[1].set_title('Cumulative Negative Profits Over Time by Shipping Mode', fontdict={'fontname': 'serif', 'color':'blue', 'size': 16})
+ax[1].set_xlabel('Date', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+ax[1].set_ylabel('Cumulative Negative Profit', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+ax[1].yaxis.set_major_formatter(plt.matplotlib.ticker.FormatStrFormatter('%.2f'))
+
+# Show the plot
+plt.tight_layout()
+plt.show()
+
+#%%
+'''KDE + Scatter'''
+sns.jointplot(
+    data=df_cleaned,
+    x='Days for shipping (real)', 
+    y='Benefit per order', 
+    kind='scatter', 
+    color='blue'
+)
+
+# Enhance the scatter plot with KDE using the updated parameters
+sns.kdeplot(
+    data=df_cleaned,
+    x='Days for shipping (real)', 
+    y='Benefit per order', 
+    cmap="Reds", 
+    shade=True, 
+    thresh=0.05,  # Updated from shade_lowest
+    alpha=0.6
+)
+
+# Customize title and font
+plt.subplots_adjust(top=0.9)
+plt.suptitle('Scatter and Density Plot of Shipping Days vs. Benefit Per Order', 
+             fontdict={'fontname': 'serif', 'color':'blue', 'size': 16})
+
+# Customize x and y labels
+plt.xlabel('Days for Shipping (Real)', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+plt.ylabel('Benefit Per Order', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+
+# Show the plot
+plt.show()
+
+#%%
+'''Rug plot'''
+plt.figure(figsize=(10, 6))
+sns.rugplot(df_cleaned['Order Item Discount Rate'], height=0.5, color='blue')
+
+# Customize title and labels
+plt.title('Rug Plot of Order Item Discount Rate', fontdict={'fontname': 'serif', 'color': 'blue', 'size': 16})
+plt.xlabel('Discount Rate', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+plt.ylabel('Density', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+
+# Show the plot
+plt.show()
+#%%
+'''Hexbin'''
+plt.figure(figsize=(10, 6))
+sns.scatterplot(data=df_cleaned, x="Days for shipping (real)", y="Days for shipment (scheduled)")
+sns.rugplot(data=df_cleaned, x="Days for shipping (real)", y="Days for shipment (scheduled)")
+plt.show()
+
+#%%
+plt.figure(figsize=(10, 6))
+plt.hexbin(
+    df_cleaned['Days for shipping (real)'], 
+    df_cleaned['Benefit per order'], 
+    gridsize=30, 
+    cmap='Blues', 
+    linewidths=0.7
+)
+
+# Add a color bar to show the scale
+plt.colorbar(label='Density')
+
+# Customize title and labels
+plt.title('Hexbin Plot of Shipping Days vs. Benefit Per Order', fontdict={'fontname': 'serif', 'color': 'blue', 'size': 16})
+plt.xlabel('Days for Shipping (Real)', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+plt.ylabel('Benefit Per Order', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+
+# Show the plot
+plt.show()
+
+#%%
+'''Strip plot'''
+plt.figure(figsize=(14, 8))
+sns.stripplot(
+    data=df_cleaned, 
+    x='Market', 
+    y='Order Item Product Price', 
+    jitter=True, 
+    size=5, 
+    color='blue', 
+    alpha=0.5
+)
+
+# Customize title and labels
+plt.title('Strip Plot of Product Prices by Market', fontdict={'fontname': 'serif', 'color': 'blue', 'size': 16})
+plt.xlabel('Market', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+plt.ylabel('Order Item Product Price', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+
+# Rotate x-axis labels for better readability
+plt.xticks(rotation=45)
+
+# Show the plot
+plt.show()
+
+#%%
+'''KDE + Hist'''
+plt.figure(figsize=(10, 6))
+sns.histplot(df_cleaned['Order Item Total'], kde=True, color='blue', bins=30)
+
+# Customize title and labels
+plt.title('Distribution of Order Item Totals', fontdict={'fontname': 'serif', 'color': 'blue', 'size': 16})
+plt.xlabel('Order Item Total', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+plt.ylabel('Frequency', fontdict={'fontname': 'serif', 'color': 'darkred', 'size': 14})
+
+# Show the plot
+plt.show()
+
+#%%
+'''Download the dataset'''
+df_cleaned.to_csv('/mnt/data/my_dataframe.csv', index=False)
 # %%
+import plotly.express as px
+import seaborn as sns
+
+# For the 3D plot, let's plot 'Sales', 'Days for shipping (real)', and 'Late_delivery_risk' using Plotly.
+df_cleaned['Late_delivery_risk'] = df_cleaned['Late_delivery_risk'].astype(int)
+df_cleaned['Benefit per order'] = df_cleaned['Benefit per order'].astype(float)
+
+# Create the 3D plot
+fig_3d = px.scatter_3d(
+    df_cleaned,
+    x='Days for shipping (real)',
+    y='Benefit per order',
+    z='Late_delivery_risk',
+    color='Delivery Status',
+    title='3D Scatter Plot of Shipping Days, Benefit per Order, and Late Delivery Risk'
+)
+fig_3d.show()
+
+# Now, let's create the swarm plot using seaborn for 'Benefit per order'.
+plt.figure(figsize=(12, 10))
+sns.swarmplot(
+    x='Late_delivery_risk',
+    y='Benefit per order',
+    hue='Delivery Status',
+    data=df_cleaned,
+    dodge=True  # Separate points by hue
+)
+plt.title('Swarm Plot of Benefit per Order by Late Delivery Risk and Delivery Status')
+plt.xlabel('Late Delivery Risk')
+plt.ylabel('Benefit per Order')
+plt.legend(title='Delivery Status')
+plt.show()
+# %%
+ 
