@@ -146,6 +146,29 @@ print("Singular Values: ", singular_values)
 print("Condition Number: ", condition_number)
 
 #%%
+cumulative_variance = np.cumsum(explained_variance)
+
+# Plotting the explained variance and cumulative variance
+fig, ax1 = plt.subplots()
+
+color = 'tab:blue'
+ax1.set_xlabel('Principal Components')
+ax1.set_ylabel('Explained Variance Ratio', color=color)
+ax1.bar(range(1, len(explained_variance) + 1), explained_variance, alpha=0.6, color=color, label='Individual Explained Variance')
+ax1.tick_params(axis='y', labelcolor=color)
+ax1.set_title('Scree Plot of Principal Components')
+
+ax2 = ax1.twinx() 
+color = 'tab:red'
+ax2.set_ylabel('Cumulative Variance Explained', color=color)  # we already handled the x-label with ax1
+ax2.plot(range(1, len(cumulative_variance) + 1), cumulative_variance, color=color, marker='o', label='Cumulative Explained Variance')
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  # to make sure that the labels do not get cut off when saving the figure
+plt.legend(loc='best')
+plt.show()
+
+#%%
 '''Normality Test'''
 from scipy.stats import shapiro
 normality_test_results = {}
@@ -708,34 +731,37 @@ plt.ylabel('Frequency', fontdict={'fontname': 'serif', 'color': 'darkred', 'size
 plt.show()
 
 # %%
-import plotly.express as px
-import seaborn as sns
+delivery_data = df_cleaned[['Days for shipping (real)', 'Days for shipment (scheduled)', 'Late_delivery_risk']].sample(1000, random_state=1)
 
-df_cleaned['Late_delivery_risk'] = df_cleaned['Late_delivery_risk'].astype(int)
-df_cleaned['Benefit per order'] = df_cleaned['Benefit per order'].astype(float)
+# Swarm plot for the delivery-related columns
+plt.figure(figsize=(10, 6))
+sns.swarmplot(data=delivery_data, size=4)
+plt.title('Swarm Plot for Delivery Related Data', fontdict={'family': 'serif', 'color': 'blue'})
+plt.xlabel('Columns', fontdict={'family': 'serif', 'color': 'darkred'})
+plt.ylabel('Values', fontdict={'family': 'serif', 'color': 'darkred'})
+plt.xticks(fontsize=10, fontfamily='serif')
+plt.yticks(fontsize=10, fontfamily='serif')
+plt.show()
 
-fig_3d = px.scatter_3d(
-    df_cleaned,
-    x='Days for shipping (real)',
-    y='Benefit per order',
-    z='Late_delivery_risk',
-    color='Delivery Status',
-    title='3D Scatter Plot of Shipping Days, Benefit per Order, and Late Delivery Risk'
-)
-fig_3d.show()
+#%%
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
 
-plt.figure(figsize=(12, 10))
-sns.swarmplot(
-    x='Late_delivery_risk',
-    y='Benefit per order',
-    hue='Delivery Status',
-    data=df_cleaned,
-    dodge=True  # Separate points by hue
-)
-plt.title('Swarm Plot of Benefit per Order by Late Delivery Risk and Delivery Status')
-plt.xlabel('Late Delivery Risk')
-plt.ylabel('Benefit per Order')
-plt.legend(title='Delivery Status')
+# Data for a three-dimensional scatter plot
+x = df_cleaned['Days for shipping (real)'][:1000]
+y = df_cleaned['Days for shipment (scheduled)'][:1000]
+z = df_cleaned['Late_delivery_risk'][:1000]
+
+# Plotting the scatter plot
+scatter = ax.scatter(x, y, z)
+
+# Set the title and labels with the font 'serif'
+ax.set_title('3D Plot of Delivery Metrics', fontdict={'family': 'serif', 'color': 'blue', 'size': 20})
+ax.set_xlabel('Days for Shipping (Real)', fontdict={'family': 'serif', 'color': 'darkred', 'size': 14})
+ax.set_ylabel('Days for Shipment (Scheduled)', fontdict={'family': 'serif', 'color': 'darkred', 'size': 14})
+ax.set_zlabel('Late Delivery Risk', fontdict={'family': 'serif', 'color': 'darkred', 'size': 14})
+
+# Show plot
 plt.show()
 # %%
  

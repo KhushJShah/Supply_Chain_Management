@@ -5,12 +5,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
 
-# Load your cleaned dataset
-df_cleaned = pd.read_csv("C:/Users/nupur/computer/Desktop/DViz/Khush_Dataset_Term Project/df_cleaned.csv").head(5000)  # Replace with your actual path to the CSV file
-
+df_cleaned = pd.read_csv("df_cleaned.csv").head(5000)  
 df_cleaned['Order date'] = pd.to_datetime(df_cleaned['order date (DateOrders)'], errors='coerce')
 
 app = dash.Dash(__name__)
+server = app.server
 
 benefit_min = df_cleaned['Benefit per order'].min()
 benefit_max = df_cleaned['Benefit per order'].max()
@@ -34,9 +33,7 @@ html.Button("Download CSV", id="btn-download-csv", title="Click to download data
                 dcc.Graph(id='lifetime-sales-plot'),
                 dcc.Dropdown(id='year-dropdown', options=[{'label': str(year), 'value': year} for year in sorted(df_cleaned['Order date'].dt.year.unique())], value=sorted(df_cleaned['Order date'].dt.year.unique())[0], style={'marginBottom': 20, 'font-family': 'Serif'}),
                 dcc.Graph(id='monthly-sales-plot'),
-                dcc.Graph(id='segment-sales-pie'),
-                html.Label('Select Year for Month-wise Sales Analysis:', style={'font-weight': 'bold', 'font-family': 'Serif'}),
-                
+                dcc.Graph(id='segment-sales-pie')
             ]),
         ]),
         dcc.Tab(label='Region', value='Region', children=[
@@ -50,7 +47,7 @@ html.Button("Download CSV", id="btn-download-csv", title="Click to download data
                     id='benefit-range-slider',
                     min=benefit_min,
                     max=benefit_max,
-                    step=(benefit_max - benefit_min) / 100,  # Define steps based on your data range
+                    step=(benefit_max - benefit_min) / 100,  
                     value=[benefit_min, benefit_max],
                     marks={int(benefit_min + i * (benefit_max - benefit_min) / 10): str(int(benefit_min + i * (benefit_max - benefit_min) / 10)) for i in range(11)},
                 ),
@@ -137,6 +134,9 @@ def update_lifetime_sales_plot(tab):
 
     # Create the plot
     fig = px.line(daily_sales, x='Order date', y='Sales', title='Sales Over Time')
+    fig.update_layout(title_font={'family': 'Serif', 'color': 'blue'},
+    xaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+    yaxis_title_font={'family': 'Serif', 'color': 'darkred'})
     return fig
 
 
@@ -166,7 +166,9 @@ def update_monthly_sales_plot(selected_year):
             xaxis_title="Month",
             yaxis_title="Sales",
             title={'text': 'Monthly Sales Analysis', 'x': 0.5, 'xanchor': 'center'},
-            template='plotly'  # Using default template to avoid conflicts
+                    xaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+                    yaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+                    template='plotly' 
         )
         return fig
     except Exception as e:
@@ -278,7 +280,9 @@ def update_delivery_graphs(tab, delivery_status, late_delivery_risk):
         color='Sales',
         title='Market vs Shipping Days Scatter Plot'
     )
-    fig_scatter.update_layout(title_font={'family': 'Serif', 'color': 'blue', 'size': 18})
+    fig_scatter.update_layout(
+    xaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+    yaxis_title_font={'family': 'Serif', 'color': 'darkred'})
     
     # Scheduled Shipping Bar Plot
     filtered_df['Days for shipping (real)'] = filtered_df['Days for shipping (real)'].astype(str)
@@ -287,14 +291,15 @@ def update_delivery_graphs(tab, delivery_status, late_delivery_risk):
     filtered_df,
     x='Market',
     y='Days for shipment (scheduled)',
-    color='Days for shipping (real)',  # This now represents categories
+    color='Days for shipping (real)',  
     title='Scheduled Shipping Days Per Market',
     opacity=1
     )
 
     fig_bar.update_layout(
     barmode='stack',
-    title_font={'family': 'Serif', 'color': 'blue', 'size': 18}
+    xaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+    yaxis_title_font={'family': 'Serif', 'color': 'darkred'}
     )
     
     # Delivery Status Pie Chart
@@ -314,7 +319,9 @@ def update_delivery_graphs(tab, delivery_status, late_delivery_risk):
         title='Sales by Shipping Mode',
         opacity=1
     )
-    fig_sales_mode.update_layout(title_font={'family': 'Serif', 'color': 'blue', 'size': 18})
+    fig_sales_mode.update_layout(
+    xaxis_title_font={'family': 'Serif', 'color': 'darkred'},
+    yaxis_title_font={'family': 'Serif', 'color': 'darkred'})
 
     return [fig_parallel, fig_scatter, fig_bar, fig_pie, fig_sales_mode]
 
@@ -325,7 +332,6 @@ def update_delivery_graphs(tab, delivery_status, late_delivery_risk):
     prevent_initial_call=True,
 )
 def download_csv(n_clicks):
-    # This function converts the DataFrame to a CSV string and sends it as a download
     return dcc.send_data_frame(df_cleaned.to_csv, "my_data.csv", index=False)
 
 
